@@ -136,7 +136,7 @@ class BridgeWidget(QWidget):
             topic_specifiers_server_all = None
             topic_specifiers_required = None
 
-            self._logger.debug('refresh_topics) self._selected_topics=%s' % (topic_list,))
+            self._logger.debug('refresh_topics) self._selected_topics=%s' % (topic_list, ))
 
             if self._select_topic_type == self.SELECT_BY_NAME:
                 topic_specifiers_server_all = \
@@ -153,14 +153,14 @@ class BridgeWidget(QWidget):
                     [(name, types) for name, types in self._node.get_topic_names_and_types()
                         if (set(types) & topic_specifiers_required)]
                 topic_list = topics_match
-                self._logger.debug('selected & published topic types=%s' % (topic_list,))
+                self._logger.debug('selected & published topic types=%s' % (topic_list, ))
 
             self._logger.debug('server_all=%s\nrequired=%s\ntlist=%s' % (
                 topic_specifiers_server_all, topic_specifiers_required, topic_list))
             if len(topic_list) == 0:
                 self._logger.error(
                     'None of the following required topics are found.\n(NAME, TYPE): %s' %
-                    (self._selected_topics,))
+                    (self._selected_topics, ))
                 return
 
         if self._current_topic_list != topic_list:

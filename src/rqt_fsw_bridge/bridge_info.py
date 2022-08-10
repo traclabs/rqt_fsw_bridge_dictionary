@@ -93,7 +93,6 @@ class BridgeInfo(ROSTopicHz):
         self.last_message = message
         super().callback_hz(message, self._topic_name)
         return
-
         # TODO(brawner) Bandwidth not supported yet
         # with self.lock:
         #     self.timestamps.append(self._clock.now())
