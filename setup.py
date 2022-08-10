@@ -12,6 +12,7 @@ setup(
         ('share/' + package_name + '/resource', ['resource/BridgeWidget.ui']),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name, ['plugin.xml']),
+        ('lib/' + package_name, ['scripts/rqt_fsw_bridge']),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
