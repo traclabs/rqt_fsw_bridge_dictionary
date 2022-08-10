@@ -1,15 +1,13 @@
-<package format="2">
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
   <name>rqt_fsw_bridge</name>
-  <version>1.0.0</version>
+  <version>0.0.1</version>
   <description>FSW Bridge UI package</description>
-  <maintainer email="swhart@traclabs.com">Stephen Hart</maintainer>
+  <maintainer email="swhart@traclabs.com">swhart</maintainer>
 
   <license>BSD</license>
-
-  <!-- Some tests are ASL 2.0 -->
   <license>Apache License 2.0</license>
-
-  <url type="repository">https://github.com/traclabs/rqt_fsw_bridge</url>
 
   <exec_depend version_gte="0.2.19">python_qt_binding</exec_depend>
   <exec_depend>rclpy</exec_depend>
@@ -17,14 +15,15 @@
   <exec_depend>rqt_gui</exec_depend>
   <exec_depend>rqt_gui_py</exec_depend>
   <exec_depend>rqt_py_common</exec_depend>
-
+  
+  <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_xmllint</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
 
   <export>
     <build_type>ament_python</build_type>
     <rqt_gui plugin="${prefix}/plugin.xml"/>
   </export>
-</package>
 
 </package>

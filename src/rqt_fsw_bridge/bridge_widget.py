@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Copyright (c) 2011, Dorian Scholz, TU Darmstadt
 # All rights reserved.
 #
@@ -28,7 +30,8 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-import array
+from __future__ import division
+
 import itertools
 import os
 
@@ -98,12 +101,15 @@ class BridgeWidget(QWidget):
         # Can be also set by the setter method "set_selected_topics".
         self._selected_topics = selected_topics
 
+        self._current_topic_list = []
         self._topics = {}
         self._tree_items = {}
         self._column_index = {}
         for column_name in self._column_names:
             self._column_index[column_name] = len(self._column_index)
         self.topics_tree_widget.setColumnHidden(self._column_index['_msg_order'], True)
+
+        # self.refresh_topics()
 
         # init and start update timer
         self._timer_refresh_topics = QTimer(self)
@@ -157,70 +163,63 @@ class BridgeWidget(QWidget):
                     (self._selected_topics,))
                 return
 
-        # start new topic dict
-        new_topics = {}
+        if self._current_topic_list != topic_list:
+            self._current_topic_list = topic_list
 
-        for topic_name, topic_types in topic_list:
-            # if topic is new or has changed its type
-            if topic_name not in self._topics or \
-                    self._topics[topic_name]['type'] != topic_types[0]:
-                # create new BridgeInfo
-                if len(topic_types) > 1:
-                    qWarning('rqt_fsw_bridge: Topic "' + topic_name +
-                             '" has more than one type, choosing the first one of type ' +
-                             topic_types[0])
-                topic_info = BridgeInfo(self._node, topic_name, topic_types[0])
-                message_instance = None
-                if topic_info.message_class is not None:
-                    message_instance = topic_info.message_class()
-                # add it to the dict and tree view
-                topic_item = self._recursive_create_widget_items(
-                    self.topics_tree_widget, topic_name, topic_types, message_instance)
-                new_topics[topic_name] = {
-                    'item': topic_item,
-                    'info': topic_info,
-                    'type': topic_types[0],
-                }
-            else:
-                # This topic has been seen before.  Check whether we are the only subscriber;
-                # if so, we set it to be deleted below.  If there are any other publishers or
-                # subscriptions in the system, we continue monitoring it.
+            # start new topic dict
+            new_topics = {}
 
-                if self._topics[topic_name]['info'].is_monitoring():
-                    pubs_info = self._node.get_publishers_info_by_topic(topic_name)
-                    subs_info = self._node.get_subscriptions_info_by_topic(topic_name)
-                    topic_is_active = len(pubs_info) > 0 or len(subs_info) > 1
+            for topic_name, topic_types in topic_list:
+                # if topic is new or has changed its type
+                if topic_name not in self._topics or \
+                        self._topics[topic_name]['type'] != topic_types[0]:
+                    # create new BridgeInfo
+                    if len(topic_types) > 1:
+                        qWarning('rqt_fsw_bridge: Topic "' + topic_name +
+                                 '" has more than one type, choosing the first one of type ' +
+                                 topic_types[0])
+                    bridge_info = BridgeInfo(self._node, topic_name, topic_types[0])
+                    message_instance = None
+                    if bridge_info.message_class is not None:
+                        message_instance = bridge_info.message_class()
+                    # add it to the dict and tree view
+                    topic_item = self._recursive_create_widget_items(
+                        self.topics_tree_widget, topic_name, topic_types, message_instance)
+                    new_topics[topic_name] = {
+                        'item': topic_item,
+                        'info': bridge_info,
+                        'type': topic_types[0],
+                    }
                 else:
-                    topic_is_active = True
-
-                if topic_is_active:
+                    # if topic has been seen before, copy it to new dict and
+                    # remove it from the old one
                     new_topics[topic_name] = self._topics[topic_name]
                     del self._topics[topic_name]
 
-        # clean up old topics
-        for topic_name in list(self._topics.keys()):
-            self._topics[topic_name]['info'].stop_monitoring()
-            index = self.topics_tree_widget.indexOfTopLevelItem(
-                self._topics[topic_name]['item'])
-            self.topics_tree_widget.takeTopLevelItem(index)
-            del self._topics[topic_name]
+            # clean up old topics
+            for topic_name in list(self._topics.keys()):
+                self._topics[topic_name]['info'].stop_monitoring()
+                index = self.topics_tree_widget.indexOfTopLevelItem(
+                    self._topics[topic_name]['item'])
+                self.topics_tree_widget.takeTopLevelItem(index)
+                del self._topics[topic_name]
 
-        # switch to new topic dict
-        self._topics = new_topics
+            # switch to new topic dict
+            self._topics = new_topics
 
         self._update_topics_data()
 
     def _update_topics_data(self):
         for topic in self._topics.values():
-            topic_info = topic['info']
-            if topic_info.monitoring:
+            bridge_info = topic['info']
+            if bridge_info.monitoring:
                 # If ROSTopicHz.get_hz is called too frequently, it may return None because it does
                 # not have valid statistics
                 rate = None
-                hz_result = topic_info.get_hz()
+                hz_result = bridge_info.get_hz(bridge_info._topic_name)
                 if hz_result is None:
-                    last_valid_time = topic_info.get_last_printed_tn()
-                    current_rostime = topic_info._clock.now().nanoseconds
+                    last_valid_time = bridge_info.get_last_printed_tn(bridge_info._topic_name)
+                    current_rostime = bridge_info._clock.now().nanoseconds
                     if last_valid_time + self._topic_timeout * 1e9 > current_rostime:
                         # If the last time this was valid was less than the topic timeout param
                         # then ignore it
@@ -231,29 +230,34 @@ class BridgeWidget(QWidget):
                 rate_text = '%1.2f' % rate if rate is not None else 'unknown'
 
                 # update bandwidth
-                bytes_per_s, _, _, _, _ = topic_info.get_bw()
-                if bytes_per_s is None:
-                    bandwidth_text = 'unknown'
-                elif bytes_per_s < 1000:
-                    bandwidth_text = '%.2fB/s' % bytes_per_s
-                elif bytes_per_s < 1000000:
-                    bandwidth_text = '%.2fKB/s' % (bytes_per_s / 1000.)
-                else:
-                    bandwidth_text = '%.2fMB/s' % (bytes_per_s / 1000000.)
+                # TODO (brawner) Currently unsupported
+                bandwidth_text = 'unknown'
+                # bytes_per_s, _, _, _ = bridge_info.get_bw()
+                # if bytes_per_s is None:
+                #     bandwidth_text = 'unknown'
+                # elif bytes_per_s < 1000:
+                #     bandwidth_text = '%.2fB/s' % bytes_per_s
+                # elif bytes_per_s < 1000000:
+                #     bandwidth_text = '%.2fKB/s' % (bytes_per_s / 1000.)
+                # else:
+                #     bandwidth_text = '%.2fMB/s' % (bytes_per_s / 1000000.)
 
                 # update values
                 value_text = ''
-                self.update_value(topic_info._topic_name, topic_info.last_message)
+                self.update_value(bridge_info._topic_name, bridge_info.last_message)
 
             else:
                 rate_text = ''
+                # bytes_per_s = None
                 bandwidth_text = ''
-                value_text = 'not monitored' if topic_info.error is None else topic_info.error
+                value_text = 'not monitored' if bridge_info.error is None else bridge_info.error
 
-            self._tree_items[topic_info._topic_name].setText(self._column_index['rate'], rate_text)
-            self._tree_items[topic_info._topic_name].setText(
+            self._tree_items[bridge_info._topic_name].setText(self._column_index['rate'], rate_text)
+            # self._tree_items[bridge_info._topic_name].setData(
+            #    self._column_index['bandwidth'], Qt.UserRole, bytes_per_s)
+            self._tree_items[bridge_info._topic_name].setText(
                 self._column_index['bandwidth'], bandwidth_text)
-            self._tree_items[topic_info._topic_name].setText(
+            self._tree_items[bridge_info._topic_name].setText(
                 self._column_index['value'], value_text)
 
     def update_value(self, topic_name, message):
@@ -280,9 +284,6 @@ class BridgeWidget(QWidget):
                 for i in range(len(message), self._tree_items[topic_name].childCount()):
                     item_topic_name = topic_name + '[%d]' % i
                     self._recursive_delete_widget_items(self._tree_items[item_topic_name])
-        elif type(message) == array.array:
-            self._tree_items[topic_name].setText(self._column_index['value'],
-                                                 repr(message.tolist()))
         else:
             if topic_name in self._tree_items:
                 self._tree_items[topic_name].setText(self._column_index['value'], repr(message))

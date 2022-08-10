@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright (c) 2021, Open Source Robotics Foundation
 # All rights reserved.
 #
