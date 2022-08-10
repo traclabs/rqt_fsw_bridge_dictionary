@@ -82,7 +82,8 @@ class BridgeWidget(QWidget):
         self._topic_timeout = topic_timeout
 
         _, package_path = get_resource('packages', 'rqt_fsw_bridge')
-        ui_file = os.path.join(package_path, 'share', 'rqt_fsw_bridge', 'resource', 'BridgeWidget.ui')
+        ui_file = os.path.join(package_path, 'share', 'rqt_fsw_bridge',
+                               'resource', 'BridgeWidget.ui')
         loadUi(ui_file, self)
         self._plugin = plugin
         self.topics_tree_widget.sortByColumn(
@@ -252,7 +253,8 @@ class BridgeWidget(QWidget):
                 bandwidth_text = ''
                 value_text = 'not monitored' if bridge_info.error is None else bridge_info.error
 
-            self._tree_items[bridge_info._topic_name].setText(self._column_index['rate'], rate_text)
+            self._tree_items[bridge_info._topic_name].setText(self._column_index['rate'],
+                                                              rate_text)
             # self._tree_items[bridge_info._topic_name].setData(
             #    self._column_index['bandwidth'], Qt.UserRole, bytes_per_s)
             self._tree_items[bridge_info._topic_name].setText(
