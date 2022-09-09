@@ -90,6 +90,7 @@ class BridgeDictionaryWidget(QWidget):
         self._select_topic_type = select_topic_type
         self._topic_timeout = topic_timeout
         self._connected_to_bridge = False
+        self._pkg_name = ""
 
         _, package_path = get_resource('packages', 'rqt_fsw_bridge')
         ui_file = os.path.join(package_path, 'share', 'rqt_fsw_bridge',
@@ -137,11 +138,11 @@ class BridgeDictionaryWidget(QWidget):
         self.bridge_plugin_info_client = self._node.create_client(GetPluginInfo, '/fsw_ros2_bridge/get_plugin_info')
         self.bridge_message_info_client = self._node.create_client(GetMessageInfo, '/fsw_ros2_bridge/get_message_info')
 
-        self.refresh_plugin_info()
+        self.wait_for_plugin()
 
         # # init and start update timer
         self._timer_refresh_topics = QTimer(self)
-        self._timer_refresh_topics.timeout.connect(self.refresh_plugin_info)
+        self._timer_refresh_topics.timeout.connect(self.wait_for_plugin)
 
     def set_topic_specifier(self, specifier):
         self._select_topic_type = specifier
@@ -164,19 +165,13 @@ class BridgeDictionaryWidget(QWidget):
         return future.result()
 
     @Slot()
-    def refresh_plugin_info(self):
-
+    def wait_for_plugin(self):
         if not self._connected_to_bridge:
-    
-            self._node.get_logger().info("trying to get plugin info")
-
-            if self.bridge_plugin_info_client.wait_for_service(timeout_sec=1.0):
+                if self.bridge_plugin_info_client.wait_for_service(timeout_sec=1.0):
                 self._plugin_info = self.send_plugin_info_request()
                 self._pkg_name = self._plugin_info.msg_pkg
                 self._node.get_logger().info("setting msg pkg: " + self._pkg_name)
-
-                self.pkg_name = ""
-                self.msg_pkg_label.setText(self.pkg_name)
+                self.msg_pkg_label.setText(self._pkg_name)
 
                 if self.bridge_message_info_client.wait_for_service(timeout_sec=1.0):
                     r = self.send_message_info_request(self._plugin_info.msg_pkg)
@@ -198,9 +193,8 @@ class BridgeDictionaryWidget(QWidget):
                     
                     self._build_dictionary_tree(self._msg_dict)
                     self.msg_tree_widget.itemClicked.connect(self.on_msg_item_clicked)
-
         
-            self._connected_to_bridge = True
+                    self._connected_to_bridge = True
         
 
         """Refresh tree view items."""
