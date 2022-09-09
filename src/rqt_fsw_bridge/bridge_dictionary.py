@@ -32,16 +32,16 @@
 
 from rqt_gui_py.plugin import Plugin
 
-from .bridge_widget import BridgeWidget
+from .bridge_dictionary_widget import BridgeDictionaryWidget
 
 
-class Bridge(Plugin):
+class BridgeDictionary(Plugin):
 
     def __init__(self, context):
-        super(Bridge, self).__init__(context)
-        self.setObjectName('Bridge')
+        super(BridgeDictionary, self).__init__(context)
+        self.setObjectName('BridgeDictionary')
 
-        self._widget = BridgeWidget(context.node, self)
+        self._widget = BridgeDictionaryWidget(context.node, self)
 
         self._widget.start()
         if context.serial_number() > 1:

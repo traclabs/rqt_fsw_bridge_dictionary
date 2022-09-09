@@ -1,17 +1,17 @@
 <library path="src">
-  <class name="BridgePlugin" type="rqt_fsw_bridge.bridge.Bridge" base_class_type="rqt_gui_py::Plugin">
+  <class name="BridgeDictionaryPlugin" type="rqt_fsw_bridge.bridge_dictionary.BridgeDictionary" base_class_type="rqt_gui_py::Plugin">
     <description>
-      A Python GUI plugin to introspect into the FSW-ROS2 brdige.
+      A Python GUI plugin to introspect into the FSW-ROS2 Bridge Dictionary.
     </description>
     <qtgui>
       <group>
-        <label>Introspection</label>
+        <label>FSW Bridge</label>
         <icon type="theme">folder</icon>
         <statustip>Plugins related to FSW bridge.</statustip>
       </group>
-      <label>FSW Bridge</label>
+      <label>FSW Bridge Dictionary</label>
       <icon type="theme">system-search</icon>
-      <statustip>A Python GUI plugin for introspection into the FSW bridge.</statustip>
+      <statustip>A Python GUI plugin for introspection into the FSW bridge dictionary.</statustip>
     </qtgui>
   </class>
 </library>

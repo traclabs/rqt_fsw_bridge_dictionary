@@ -39,29 +39,32 @@ from python_qt_binding.QtCore import qWarning
 from ros2topic.verb.hz import ROSTopicHz
 from rqt_py_common.message_helpers import get_message_class
 
+from rosidl_runtime_py import get_message_interfaces
+import importlib
 
-class BridgeInfo(ROSTopicHz):
+
+class BridgeDictionaryInfo(ROSTopicHz):
 
     def __init__(self, node, topic_name, topic_type):
-        super(BridgeInfo, self).__init__(node, 100)
+        super(BridgeDictionaryInfo, self).__init__(node, 100)
         self._node = node
         self._topic_name = topic_name
         self.error = None
-        self._subscriber = None
-        self.monitoring = False
-        self._reset_data()
-        self.message_class = None
-        if topic_type is None:
-            self.error = 'No topic types associated with topic: ' % topic_name
-        try:
-            self.message_class = get_message_class(topic_type)
-        except Exception as e:
-            self.message_class = None
-            qWarning('BridgeInfo.__init__(): %s' % (e))
+        # self._subscriber = None
+        # self.monitoring = False
+        # self._reset_data()
+        # self.message_class = None
+        # if topic_type is None:
+        #     self.error = 'No topic types associated with topic: ' % topic_name
+        # try:
+        #     self.message_class = get_message_class(topic_type)
+        # except Exception as e:
+        #     self.message_class = None
+        #     qWarning('BridgeDictionaryInfo.__init__(): %s' % (e))
 
-        if self.message_class is None:
-            self.error = 'can not get message class for type "%s"' % topic_type
-            qWarning('BridgeInfo.__init__(): topic "%s": %s' % (topic_name, self.error))
+        # if self.message_class is None:
+        #     self.error = 'can not get message class for type "%s"' % topic_type
+        #     qWarning('BridgeDictionaryInfo.__init__(): topic "%s": %s' % (topic_name, self.error))
 
     def _reset_data(self):
         self.last_message = None
@@ -130,3 +133,34 @@ class BridgeInfo(ROSTopicHz):
         #     max_size = max(self.sizes)
         #     min_size = min(self.sizes)
         #     return bytes_per_s, mean_size, min_size, max_size
+
+
+    def get_pkg_message_info(self, pkg_name):
+        dict = {"commands": [], "telemetry": [], "helper": []}
+        for package_name, message_names in get_message_interfaces().items():
+            for message_name in message_names:
+                    m = f'{package_name}/{message_name}'
+                    # self.get_logger().info("found msg type: " + m + ", pkg: " + package_name + ", msg: " + message_name)            
+                    message_name = message_name.replace("msg/", "")
+                    if package_name == pkg_name:
+                        MsgType = getattr(importlib.import_module(package_name + ".msg"), message_name)
+                        d = MsgType.get_fields_and_field_types()
+                        if 'cmd_id' in d.keys():
+                            dict["commands"].append(message_name)
+                        elif 'Tlm' in message_name:
+                            dict["telemetry"].append(message_name)
+                        else:
+                            dict["helper"].append(message_name)
+        return dict
+
+
+    def get_msg_struct(self, pkg_name, msg_name):
+        for package_name, message_names in get_message_interfaces().items():
+            for message_name in message_names:
+                    m = f'{package_name}/{message_name}'
+                    # self.get_logger().info("found msg type: " + m + ", pkg: " + package_name + ", msg: " + message_name)            
+                    message_name = message_name.replace("msg/", "")
+                    if (message_name == msg_name) and (package_name == pkg_name):
+                        MsgType = getattr(importlib.import_module(package_name + ".msg"), message_name)
+                        return MsgType.get_fields_and_field_types()
+        return {}

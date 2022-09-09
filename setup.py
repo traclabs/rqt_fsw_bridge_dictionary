@@ -9,7 +9,7 @@ setup(
     data_files=[
         ('share/' + package_name, ['package.xml']),
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
-        ('share/' + package_name + '/resource', ['resource/BridgeWidget.ui']),
+        ('share/' + package_name + '/resource', ['resource/BridgeDictionaryWidget.ui']),
         ('share/' + package_name, ['plugin.xml']),
     ],
     install_requires=['setuptools'],
