@@ -43,11 +43,10 @@ from ament_index_python import get_resource
 from python_qt_binding import loadUi
 from python_qt_binding.QtCore import Qt, QTimer, qWarning, Slot
 from python_qt_binding.QtGui import QIcon
-from python_qt_binding.QtWidgets import QHeaderView, QMenu, QTreeWidgetItem, QWidget
+from python_qt_binding.QtWidgets import QHeaderView, QMenu, QTreeWidgetItem, QWidget, QTableWidgetItem
 from rqt_py_common.message_helpers import get_message_class
 
-from fsw_ros2_bridge_msgs.srv import GetMessageInfo
-from fsw_ros2_bridge_msgs.srv import GetPluginInfo
+from fsw_ros2_bridge_msgs.srv import GetMessageInfo, SetMessageInfo, GetPluginInfo
 from fsw_ros2_bridge_msgs.msg import MessageInfo
 
 from .bridge_dictionary_info import BridgeDictionaryInfo
@@ -91,6 +90,7 @@ class BridgeDictionaryWidget(QWidget):
         self._topic_timeout = topic_timeout
         self._connected_to_bridge = False
         self._pkg_name = ""
+        self._plugin_name = ""
 
         _, package_path = get_resource('packages', 'rqt_fsw_bridge')
         ui_file = os.path.join(package_path, 'share', 'rqt_fsw_bridge',
@@ -136,13 +136,15 @@ class BridgeDictionaryWidget(QWidget):
 
         
         self.bridge_plugin_info_client = self._node.create_client(GetPluginInfo, '/fsw_ros2_bridge/get_plugin_info')
-        self.bridge_message_info_client = self._node.create_client(GetMessageInfo, '/fsw_ros2_bridge/get_message_info')
+        self.bridge_get_message_info_client = self._node.create_client(GetMessageInfo, '/fsw_ros2_bridge/get_message_info')
+        self.bridge_set_message_info_client = self._node.create_client(SetMessageInfo, '/fsw_ros2_bridge/set_message_info')
 
         self.wait_for_plugin()
 
         # # init and start update timer
         self._timer_refresh_topics = QTimer(self)
         self._timer_refresh_topics.timeout.connect(self.wait_for_plugin)
+
 
     def set_topic_specifier(self, specifier):
         self._select_topic_type = specifier
@@ -160,20 +162,31 @@ class BridgeDictionaryWidget(QWidget):
     def send_message_info_request(self, pkg_name):
         req = GetMessageInfo.Request()
         req.pkg_name = pkg_name
-        future = self.bridge_message_info_client.call_async(req)
+        future = self.bridge_get_message_info_client.call_async(req)
         rclpy.spin_until_future_complete(self._node, future)
         return future.result()
+
+    def setup_connections(self):
+        self.msg_tree_widget.itemClicked.connect(self.on_msg_item_clicked)
+
+        self.clear_info_button.clicked.connect(self.clear_info_pressed)
+        self.save_info_button.clicked.connect(self.save_info_pressed)
+        self.reload_info_button.clicked.connect(self.reload_info_pressed)
 
     @Slot()
     def wait_for_plugin(self):
         if not self._connected_to_bridge:
-                if self.bridge_plugin_info_client.wait_for_service(timeout_sec=1.0):
+            if self.bridge_plugin_info_client.wait_for_service(timeout_sec=1.0):
                 self._plugin_info = self.send_plugin_info_request()
                 self._pkg_name = self._plugin_info.msg_pkg
+                self._plugin_name = self._plugin_info.plugin_name
+                self._node.get_logger().info("setting plugin: " + self._plugin_name)
                 self._node.get_logger().info("setting msg pkg: " + self._pkg_name)
                 self.msg_pkg_label.setText(self._pkg_name)
+                self.plugin_name_label.setText(self._plugin_name)
+                self._plugin_pkg_name = self._plugin_name.split('.')[0]
 
-                if self.bridge_message_info_client.wait_for_service(timeout_sec=1.0):
+                if self.bridge_get_message_info_client.wait_for_service(timeout_sec=1.0):
                     r = self.send_message_info_request(self._plugin_info.msg_pkg)
                     
                     self._node.get_logger().info("setting msg info with: " + str(len(r.msg_info)))
@@ -191,8 +204,10 @@ class BridgeDictionaryWidget(QWidget):
                     self._node.get_logger().info("  found " + str(len(self._msg_dict["telemetry"])) + " telemetry msgs")
                     self._node.get_logger().info("  found " + str(len(self._msg_dict["helper"])) + " helper msgs")
                     
+                    self.bridge_dictionary_info.build_msg_dict(self._plugin_pkg_name, self._pkg_name)
                     self._build_dictionary_tree(self._msg_dict)
-                    self.msg_tree_widget.itemClicked.connect(self.on_msg_item_clicked)
+
+                    self.setup_connections()
         
                     self._connected_to_bridge = True
         
@@ -529,6 +544,7 @@ class BridgeDictionaryWidget(QWidget):
 
     def _build_msg_struct_tree(self, data, par=None):
         items = []
+        item = None
         for key, values in data.items():
             if par is None:
                 item = QTreeWidgetItem([key])
@@ -549,35 +565,90 @@ class BridgeDictionaryWidget(QWidget):
             self.msg_struct_tree.insertTopLevelItems(0, items)
 
         return item
-    
 
-        
+
+    def _get_msg_type(self, msg_name):
+        if msg_name in self._msg_dict["telemetry"]: return "TELEMETRY"
+        if msg_name in self._msg_dict["commands"]: return "COMMAND"
+        if msg_name in self._msg_dict["helper"]: return "HELPER"
+        return "UNKNOWN"
+
 
     @QtCore.pyqtSlot(QtWidgets.QTreeWidgetItem, int)
     def on_msg_item_clicked(self, it, col):
         self.msg_struct_tree.clear()
+
+        msg_name = ""
+        stored_info = None
+
         for t in self._msg_dict["commands"]:
             if t == it.text(col):
-                info_str = "This is info about COMMAND msg: " + t
-                self.msg_info_text.setText(info_str)
-                s = self.bridge_dictionary_info.get_msg_struct(self._pkg_name, t)
-                self._build_msg_struct_tree(s) 
+                msg_name = t
+                break
         for t in self._msg_dict["telemetry"]:
             if t == it.text(col):
-                info_str = "This is info about TELEMETRY msg: " + t
-                self.msg_info_text.setText(info_str)
-                s = self.bridge_dictionary_info.get_msg_struct(self._pkg_name, t)
-                self._build_msg_struct_tree(s) 
+                msg_name = t
+                break
         for t in self._msg_dict["helper"]:
             if t == it.text(col):
-                info_str = "This is info about HELPER msg: " + t
-                self.msg_info_text.setText(info_str)
-                s = self.bridge_dictionary_info.get_msg_struct(self._pkg_name, t)
-                self._build_msg_struct_tree(s) 
+                msg_name = t
+                break
+
+        stored_info = self.bridge_dictionary_info.load_message_info(self._plugin_pkg_name, msg_name)
+        if stored_info is None:
+            info_str = "This is info about " + self._get_msg_type(msg_name) + " msg: " + msg_name
+            self.msg_info_text.setText(info_str)
+        else:
+            self.msg_info_text.setText(stored_info["info"])
+
+        s = self.bridge_dictionary_info.get_msg_struct(self._pkg_name, msg_name)
+        self._build_msg_struct_tree(s) 
+
+        msg_name_item = QTableWidgetItem()
+        msg_name_item.setText(msg_name)
+        self.msg_table_header.setItem(0,0, msg_name_item)
+
+        msg_pkg_name_item = QTableWidgetItem()
+        msg_pkg_name_item.setText(self._pkg_name)
+        self.msg_table_header.setItem(1,0, msg_pkg_name_item)
+
+        msg_type_item = QTableWidgetItem()
+        msg_type_item.setText(self._get_msg_type(msg_name))
+        self.msg_table_header.setItem(2,0, msg_type_item)
 
         self.msg_struct_tree.resizeColumnToContents(0)
         return
 
+    @QtCore.pyqtSlot()
+    def clear_info_pressed(self):
+        self._node.get_logger().info("clear info button")
+        item = self.msg_tree_widget.currentItem().text(0)
+        self._node.get_logger().info(" item: " + str(item))
+        info_str = "This is info about " + self._get_msg_type(item) + " msg: " + str(item) 
+        self.msg_info_text.setText(info_str)
+        return
+
+    @QtCore.pyqtSlot()
+    def save_info_pressed(self):
+        self._node.get_logger().info("save info button")
+        item = self.msg_tree_widget.currentItem().text(0)
+        self._node.get_logger().info(" item: " + str(item))
+        info = self.msg_info_text.toPlainText()
+        self.bridge_dictionary_info.save_message_info(self._plugin_pkg_name, str(item), info)
+        return
+
+    @QtCore.pyqtSlot()
+    def reload_info_pressed(self):
+        self._node.get_logger().info("reload info button")
+        item = self.msg_tree_widget.currentItem().text(0)
+        self._node.get_logger().info(" item: " + str(item))
+        stored_info = self.bridge_dictionary_info.load_message_info(self._plugin_pkg_name, str(item))
+        if stored_info is None:
+            info_str = "This is info about " + self._get_msg_type(item) + " msg: " + str(item) 
+            self.msg_info_text.setText(info_str)
+        else:
+            self.msg_info_text.setText(stored_info["info"])
+        return
 
 # class TreeWidgetItem(QTreeWidgetItem):
 
