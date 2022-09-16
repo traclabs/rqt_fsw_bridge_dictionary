@@ -27,15 +27,15 @@ class BridgeDictionaryWidget(QWidget):
 
         self._node = node
         self._plugin = plugin
-        self._logger = self._node.get_logger().get_child('rqt_fsw_bridge.BridgeDictionaryWidget')
+        self._logger = self._node.get_logger().get_child('rqt_fsw_bridge_dictionary.BridgeDictionaryWidget')
         self._connected_to_bridge = False
         self._msg_pkg_name = ""
         self._plugin_pkg_name = ""
         self._plugin_name = ""
 
         # set up UI
-        _, package_path = get_resource('packages', 'rqt_fsw_bridge')
-        ui_file = os.path.join(package_path, 'share', 'rqt_fsw_bridge',
+        _, package_path = get_resource('packages', 'rqt_fsw_bridge_dictionary')
+        ui_file = os.path.join(package_path, 'share', 'rqt_fsw_bridge_dictionary',
                                'resource', 'BridgeDictionaryWidget.ui')
         loadUi(ui_file, self)
         self.setup_ui_connections()
@@ -75,7 +75,7 @@ class BridgeDictionaryWidget(QWidget):
         if instance_settings.contains('tree_widget_header_state'):
             header_state = instance_settings.value('tree_widget_header_state')
             if not self.msg_tree_widget.header().restoreState(header_state):
-                self._logger.warn('rqt_fsw_bridge: Failed to restore header state.')
+                self._logger.warn('rqt_fsw_bridge_dictionary: Failed to restore header state.')
 
     def setup_ui_connections(self):
         self.msg_tree_widget.itemClicked.connect(self._on_msg_item_clicked)

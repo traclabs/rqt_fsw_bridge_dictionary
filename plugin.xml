@@ -1,5 +1,5 @@
 <library path="src">
-  <class name="BridgeDictionaryPlugin" type="rqt_fsw_bridge.bridge_dictionary.BridgeDictionary" base_class_type="rqt_gui_py::Plugin">
+  <class name="BridgeDictionaryPlugin" type="rqt_fsw_bridge_dictionary.bridge_dictionary.BridgeDictionary" base_class_type="rqt_gui_py::Plugin">
     <description>
       A Python GUI plugin to introspect into the FSW-ROS2 Bridge Dictionary.
     </description>
