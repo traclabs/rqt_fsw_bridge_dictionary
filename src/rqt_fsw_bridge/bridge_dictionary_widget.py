@@ -2,6 +2,7 @@
 
 from __future__ import division
 import os
+import ast
 
 from python_qt_binding import loadUi
 from python_qt_binding.QtCore import Qt, QTimer, Slot
@@ -15,12 +16,12 @@ from fsw_ros2_bridge_msgs.srv import GetMessageInfo, SetMessageInfo, GetPluginIn
 from fsw_ros2_bridge_msgs.msg import MessageInfo
 
 from .dictionary_info import DictionaryInfo
-
+from .confirm_dialog import ConfirmDialog
 
 class BridgeDictionaryWidget(QWidget):
 
     _column_names = ['structure', 'type']
-
+    
     def __init__(self, node, plugin):
         super(BridgeDictionaryWidget, self).__init__()
 
@@ -38,7 +39,6 @@ class BridgeDictionaryWidget(QWidget):
         loadUi(ui_file, self)
         self.setup_ui_connections()
 
-        # necessary?
         self._column_index = {}
         for column_name in self._column_names:
             self._column_index[column_name] = len(self._column_index)
@@ -86,13 +86,23 @@ class BridgeDictionaryWidget(QWidget):
         rclpy.spin_until_future_complete(self._node, future)
         return future.result()
 
-    def send_message_info_request(self, pkg_name):
+    def send_get_message_info_request(self):
         req = GetMessageInfo.Request()
-        req.pkg_name = pkg_name
         future = self.bridge_get_message_info_client.call_async(req)
         rclpy.spin_until_future_complete(self._node, future)
         return future.result()
 
+    def send_set_message_info_request(self, msg_name, info):
+        req = SetMessageInfo.Request()
+        req.msg_info.pkg_name = self._msg_pkg_name
+        req.msg_info.msg_name = msg_name
+        # probably should get type and json info here and send it back, but it is ignored on
+        # the server so whatever 
+        req.msg_info.info = info
+        future = self.bridge_set_message_info_client.call_async(req)
+        rclpy.spin_until_future_complete(self._node, future)
+        return future.result()
+    
     @Slot()
     def wait_for_plugin(self):
         if (not self._connected_to_bridge) and (not self._msg_dict):
@@ -113,11 +123,11 @@ class BridgeDictionaryWidget(QWidget):
 
             if self._plugin_info is not None:
                 if self.bridge_get_message_info_client.wait_for_service(timeout_sec=1.0):
-                    r = self.send_message_info_request(self._plugin_info.msg_pkg)
+                    r = self.send_get_message_info_request()
                     if r:
                         self._connected_to_bridge = True
-                        self._node.get_logger().info("setting msg info with: " + str(len(r.msg_info)))
-                        self._msg_dict = self._dictionary_info.set_message_info(self._plugin_pkg_name, self._msg_pkg_name, r.msg_info)
+                        self._node.get_logger().info("setting msg info with: " + str(len(r.msg_info)) + " messages")
+                        self._msg_dict = self._dictionary_info.init(self._plugin_pkg_name, self._msg_pkg_name, r.msg_info)
                         if self._msg_dict:
                             self.build_dictionary_tree(self._msg_dict) 
 
@@ -136,22 +146,25 @@ class BridgeDictionaryWidget(QWidget):
 
         self.msg_tree_widget.clear()
         self.msg_tree_widget.insertTopLevelItems(0, items)
+        self.msg_tree_widget.expandAll()
 
     def build_msg_struct_tree(self, data, par=None):
         items = []
         item = None
-        for key, values in data.items():
+
+        data = ast.literal_eval(data)
+        for key in data.keys():
             if par is None:
                 item = QTreeWidgetItem([key])
             else:
                 item = QTreeWidgetItem([key, par])
 
             item.setText(self._column_index['structure'], key)
-            item.setText(self._column_index['type'], values)
+            item.setText(self._column_index['type'], data[key])
 
             if not self.is_primitive(data[key]):
                 [pkg_name, msg_type] = data[key].split("/")
-                m = self._dictionary_info.get_msg_struct(pkg_name, msg_type)
+                m = self._dictionary_info.get_message_struct(msg_type)
                 child = self.build_msg_struct_tree(m, data[key])
                 item.addChild(child)
             items.append(item)
@@ -172,16 +185,6 @@ class BridgeDictionaryWidget(QWidget):
         if any(t in sublist for sublist in self._msg_dict.values()):
             msg_name = t
 
-        stored_info = self._dictionary_info.load_message_info(self._plugin_pkg_name, msg_name)
-        if stored_info is None:
-            info_str = "This is info about " + self._dictionary_info.get_msg_type(msg_name) + " msg: " + msg_name
-            self.msg_info_text.setText(info_str)
-        else:
-            self.msg_info_text.setText(stored_info["info"])
-
-        s = self._dictionary_info.get_msg_struct(self._msg_pkg_name, msg_name)
-        self.build_msg_struct_tree(s) 
-
         msg_name_item = QTableWidgetItem()
         msg_name_item.setText(msg_name)
         self.msg_table_header.setItem(0,0, msg_name_item)
@@ -191,39 +194,53 @@ class BridgeDictionaryWidget(QWidget):
         self.msg_table_header.setItem(1,0, msg_pkg_name_item)
 
         msg_type_item = QTableWidgetItem()
-        msg_type_item.setText(self._dictionary_info.get_msg_type(msg_name))
+        msg_type_item.setText(self._dictionary_info.get_message_type(msg_name))
         self.msg_table_header.setItem(2,0, msg_type_item)
 
+        info_str = self._dictionary_info.get_message_info(msg_name)
+        if info_str is None:
+            info_str = "This is info about " + self._dictionary_info.get_message_type(msg_name) + " msg: " + msg_name
+            self.msg_info_text.setText(info_str)
+        else:
+            self.msg_info_text.setText(info_str)
+
+        self._node.get_logger().info("info_str: " + info_str)
+        s = self._dictionary_info.get_message_struct(msg_name)
+        self.build_msg_struct_tree(s) 
         self.msg_struct_tree.resizeColumnToContents(0)
         return
 
     @QtCore.pyqtSlot()
     def clear_info_pressed(self):
-        self._node.get_logger().info("clear info button")
         item = self.msg_tree_widget.currentItem().text(0)
-        self._node.get_logger().info(" item: " + str(item))
-        info_str = "This is info about " + self._dictionary_info.get_msg_type(item) + " msg: " + str(item) 
-        self.msg_info_text.setText(info_str)
+        dialog_str = "Really clear message info for \'" + str(item) +"\'?"
+        dlg = ConfirmDialog(dialog_str, self)
+        if dlg.exec():
+            info_str = "This is info about " + self._dictionary_info.get_message_type(item) + " msg: " + str(item) 
+            self.msg_info_text.setText(info_str)
         return
 
     @QtCore.pyqtSlot()
     def save_info_pressed(self):
-        self._node.get_logger().info("save info button")
         item = self.msg_tree_widget.currentItem().text(0)
-        self._node.get_logger().info(" item: " + str(item))
-        info = self.msg_info_text.toPlainText()
-        self._dictionary_info.save_message_info(self._plugin_pkg_name, str(item), info)
+        dialog_str = "Really save message info for \'" + str(item) +"\'?"
+        dlg = ConfirmDialog(dialog_str, self)
+        if dlg.exec():
+            info = self.msg_info_text.toPlainText()
+            self._dictionary_info.save_message_info(str(item), info)
+            r = self.send_set_message_info_request(str(item), info)
         return
 
     @QtCore.pyqtSlot()
     def reload_info_pressed(self):
-        self._node.get_logger().info("reload info button")
         item = self.msg_tree_widget.currentItem().text(0)
-        self._node.get_logger().info(" item: " + str(item))
-        stored_info = self._dictionary_info.load_message_info(self._plugin_pkg_name, str(item))
-        if stored_info is None:
-            info_str = "This is info about " + self._dictionary_info.get_msg_type(item) + " msg: " + str(item) 
-            self.msg_info_text.setText(info_str)
-        else:
-            self.msg_info_text.setText(stored_info["info"])
+        dialog_str = "Really reload message info for \'" + str(item) +"\'?"
+        dlg = ConfirmDialog(dialog_str, self)
+        if dlg.exec():
+            stored_info = self._dictionary_info.get_message_info(str(item))
+            if stored_info is None:
+                info_str = "This is info about " + self._dictionary_info.get_message_type(item) + " msg: " + str(item) 
+                self.msg_info_text.setText(info_str)
+            else:
+                self.msg_info_text.setText(stored_info)
         return
