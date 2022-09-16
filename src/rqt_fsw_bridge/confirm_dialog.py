@@ -1,4 +1,5 @@
-from python_qt_binding.QtWidgets import QDialog, QDialogButtonBox, QVBoxLayout, QLabel
+from python_qt_binding.QtWidgets import QDialog, QDialogButtonBox
+from python_qt_binding.QtWidgets import QVBoxLayout, QLabel
 
 
 class ConfirmDialog(QDialog):

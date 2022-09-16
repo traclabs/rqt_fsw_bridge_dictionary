@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
 
-import importlib
-from os import walk
-import json
-
-from python_qt_binding.QtCore import qWarning
-
-from ament_index_python.packages import get_package_share_directory
-
 from fsw_ros2_bridge_msgs.msg import MessageInfo
 
 
@@ -35,18 +27,26 @@ class DictionaryInfo:
                 self._msg_dict["commands"].append(m.msg_name)
             else:
                 self._msg_dict["helper"].append(m.msg_name)
-            self._msg_struct[m.msg_name] = m.json 
-            self._msg_info[m.msg_name] = m.info 
+            self._msg_struct[m.msg_name] = m.json
+            self._msg_info[m.msg_name] = m.info
+
+        n_cmd = len(self._msg_dict["commands"])
+        n_tlm = len(self._msg_dict["telemetry"])
+        n_hlp = len(self._msg_dict["helper"])
+
         self._node.get_logger().info("Message Dictionary:")
-        self._node.get_logger().info("  found " + str(len(self._msg_dict["commands"])) + " command msgs")
-        self._node.get_logger().info("  found " + str(len(self._msg_dict["telemetry"])) + " telemetry msgs")
-        self._node.get_logger().info("  found " + str(len(self._msg_dict["helper"])) + " helper msgs")
+        self._node.get_logger().info("  found " + str(n_cmd) + " command msgs")
+        self._node.get_logger().info("  found " + str(n_tlm) + " telemetry msgs")
+        self._node.get_logger().info("  found " + str(n_hlp) + " helper msgs")
         return self._msg_dict
 
     def get_message_type(self, msg_name):
-        if msg_name in self._msg_dict["telemetry"]: return "TELEMETRY"
-        if msg_name in self._msg_dict["commands"]: return "COMMAND"
-        if msg_name in self._msg_dict["helper"]: return "HELPER"
+        if msg_name in self._msg_dict["telemetry"]:
+            return "TELEMETRY"
+        if msg_name in self._msg_dict["commands"]:
+            return "COMMAND"
+        if msg_name in self._msg_dict["helper"]:
+            return "HELPER"
         return "UNKNOWN"
 
     def get_message_struct(self, msg_name):
@@ -61,4 +61,3 @@ class DictionaryInfo:
 
     def save_message_info(self, msg_name, info):
         self._msg_info[msg_name] = info
-        
