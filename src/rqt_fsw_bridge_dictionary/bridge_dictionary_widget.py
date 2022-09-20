@@ -78,7 +78,7 @@ class BridgeDictionaryWidget(QWidget):
                 self._logger.warn('rqt_fsw_bridge_dictionary: Failed to restore header state.')
 
     def setup_ui_connections(self):
-        self.msg_tree_widget.itemClicked.connect(self._on_msg_item_clicked)
+        self.msg_tree_widget.itemClicked.connect(self.on_msg_item_clicked)
         self.clear_info_button.clicked.connect(self.clear_info_pressed)
         self.save_info_button.clicked.connect(self.save_info_pressed)
         self.reload_info_button.clicked.connect(self.reload_info_pressed)
@@ -182,7 +182,7 @@ class BridgeDictionaryWidget(QWidget):
         return item
 
     @QtCore.pyqtSlot(QtWidgets.QTreeWidgetItem, int)
-    def _on_msg_item_clicked(self, it, col):
+    def on_msg_item_clicked(self, it, col):
         self.msg_struct_tree.clear()
 
         msg_name = ""
