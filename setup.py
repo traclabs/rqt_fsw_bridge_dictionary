@@ -25,7 +25,8 @@ setup(
         'Topic :: Software Development',
     ],
     description=(
-        'rqt_fsw_bridge_dictionary provides a GUI plugin for displaying information about the FSW ROS2 bridge dictionary'
+        'rqt_fsw_bridge_dictionary provides a GUI plugin for displaying information '
+        + 'about the FSW ROS2 bridge dictionary'
     ),
     license='BSD',
     tests_require=['pytest'],

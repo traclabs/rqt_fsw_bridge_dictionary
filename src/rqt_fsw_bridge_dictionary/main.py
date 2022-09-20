@@ -37,7 +37,8 @@ from rqt_gui.main import Main
 
 def main():
     main = Main()
-    sys.exit(main.main(sys.argv, standalone='rqt_fsw_bridge_dictionary.bridge_dictionary.BridgeDictionary'))
+    s = 'rqt_fsw_bridge_dictionary.bridge_dictionary.BridgeDictionary'
+    sys.exit(main.main(sys.argv, standalone=s))
 
 
 if __name__ == '__main__':

@@ -25,9 +25,11 @@ class BridgeDictionaryWidget(QWidget):
     def __init__(self, node, plugin):
         super(BridgeDictionaryWidget, self).__init__()
 
+        n = 'rqt_fsw_bridge_dictionary.BridgeDictionaryWidget'
+
         self._node = node
         self._plugin = plugin
-        self._logger = self._node.get_logger().get_child('rqt_fsw_bridge_dictionary.BridgeDictionaryWidget')
+        self._logger = self._node.get_logger().get_child(n)
         self._connected_to_bridge = False
         self._msg_pkg_name = ""
         self._plugin_pkg_name = ""
