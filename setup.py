@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'rqt_fsw_bridge'
+package_name = 'rqt_fsw_bridge_dictionary'
 setup(
     name=package_name,
     version='1.0.0',
@@ -9,7 +9,7 @@ setup(
     data_files=[
         ('share/' + package_name, ['package.xml']),
         ('share/ament_index/resource_index/packages', ['resource/' + package_name]),
-        ('share/' + package_name + '/resource', ['resource/BridgeWidget.ui']),
+        ('share/' + package_name + '/resource', ['resource/BridgeDictionaryWidget.ui']),
         ('share/' + package_name, ['plugin.xml']),
     ],
     install_requires=['setuptools'],
@@ -25,13 +25,14 @@ setup(
         'Topic :: Software Development',
     ],
     description=(
-        'rqt_fsw_bridge provides a GUI plugin for displaying information about the FSW ROS2 bridge'
+        'rqt_fsw_bridge_dictionary provides a GUI plugin for displaying information '
+        + 'about the FSW ROS2 bridge dictionary'
     ),
     license='BSD',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'rqt_fsw_bridge = ' + package_name + '.main:main',
+            'rqt_fsw_bridge_dictionary = ' + package_name + '.main:main',
         ],
     },
 )

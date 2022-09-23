@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-# Copyright (c) 2011, Dorian Scholz, TU Darmstadt
+# Copyright (c) 2021, Open Source Robotics Foundation
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -30,30 +30,16 @@
 # ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-from rqt_gui_py.plugin import Plugin
+import sys
 
-from .bridge_widget import BridgeWidget
+from rqt_gui.main import Main
 
 
-class Bridge(Plugin):
+def main():
+    main = Main()
+    s = 'rqt_fsw_bridge_dictionary.bridge_dictionary.BridgeDictionary'
+    sys.exit(main.main(sys.argv, standalone=s))
 
-    def __init__(self, context):
-        super(Bridge, self).__init__(context)
-        self.setObjectName('Bridge')
 
-        self._widget = BridgeWidget(context.node, self)
-
-        self._widget.start()
-        if context.serial_number() > 1:
-            self._widget.setWindowTitle(
-                self._widget.windowTitle() + (' (%d)' % context.serial_number()))
-        context.add_widget(self._widget)
-
-    def shutdown_plugin(self):
-        self._widget.shutdown_plugin()
-
-    def save_settings(self, plugin_settings, instance_settings):
-        self._widget.save_settings(plugin_settings, instance_settings)
-
-    def restore_settings(self, plugin_settings, instance_settings):
-        self._widget.restore_settings(plugin_settings, instance_settings)
+if __name__ == '__main__':
+    main()

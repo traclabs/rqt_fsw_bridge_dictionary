@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>rqt_fsw_bridge</name>
+  <name>rqt_fsw_bridge_dictionary</name>
   <version>0.0.1</version>
-  <description>FSW Bridge UI package</description>
+  <description>rqt FSW Bridge Dictionary UI package</description>
   <maintainer email="swhart@traclabs.com">swhart</maintainer>
 
   <license>BSD</license>
@@ -15,6 +15,8 @@
   <exec_depend>rqt_gui</exec_depend>
   <exec_depend>rqt_gui_py</exec_depend>
   <exec_depend>rqt_py_common</exec_depend>
+
+  <exec_depend>fsw_ros2_bridge_msgs</exec_depend>
   
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

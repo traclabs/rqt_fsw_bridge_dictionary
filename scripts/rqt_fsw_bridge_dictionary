@@ -2,6 +2,6 @@
 
 import sys
 
-from rqt_fsw_bridge.main import main
+from rqt_fsw_bridge_dictionary.main import main
 
 sys.exit(main())
