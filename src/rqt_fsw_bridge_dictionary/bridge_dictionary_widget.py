@@ -3,6 +3,7 @@
 from __future__ import division
 import os
 import ast
+import collections
 
 from python_qt_binding import loadUi
 from python_qt_binding.QtCore import QTimer, Slot
@@ -161,27 +162,47 @@ class BridgeDictionaryWidget(QWidget):
         items = []
         item = None
 
+        if len(data) == 0:
+            return items
+       
         data = ast.literal_eval(data)
         for key in data.keys():
+
             if par is None:
                 item = QTreeWidgetItem([key])
             else:
                 item = QTreeWidgetItem([key, par])
 
-            item.setText(self._column_index['structure'], key)
-            item.setText(self._column_index['type'], data[key])
+            dk = data[key]
 
-            if not self.is_primitive(data[key]):
-                [pkg_name, msg_type] = data[key].split("/")
+            if "sequence" in data[key]:
+                item.setText(self._column_index['structure'], (key + "[]"))
+                dk = dk[9:len(dk)-1]
+                item.setText(self._column_index['type'], dk)
+            else:
+                item.setText(self._column_index['structure'], key)
+                item.setText(self._column_index['type'], dk)
+
+            if not self.is_primitive(dk):
+                pkg_name = ""
+                s = dk.split("/")
+                if len(s) == 2:
+                    [pkg_name, msg_type] = s
+                else :
+                    msg_type = dk
+
                 m = self._dictionary_info.get_message_struct(msg_type)
-                child = self.build_msg_struct_tree(m, data[key])
-                item.addChild(child)
+
+                children = self.build_msg_struct_tree(m, dk)
+                for c in children:
+                    item.addChild(c)
+
             items.append(item)
 
         if par is None:
             self.msg_struct_tree.insertTopLevelItems(0, items)
 
-        return item
+        return items
 
     @QtCore.pyqtSlot(QtWidgets.QTreeWidgetItem, int)
     def on_msg_item_clicked(self, it, col):
