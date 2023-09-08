@@ -3,7 +3,6 @@
 from __future__ import division
 import os
 import ast
-import collections
 
 from python_qt_binding import loadUi
 from python_qt_binding.QtCore import QTimer, Slot
@@ -164,7 +163,7 @@ class BridgeDictionaryWidget(QWidget):
 
         if len(data) == 0:
             return items
-       
+
         data = ast.literal_eval(data)
         for key in data.keys():
 
@@ -188,7 +187,7 @@ class BridgeDictionaryWidget(QWidget):
                 s = dk.split("/")
                 if len(s) == 2:
                     [pkg_name, msg_type] = s
-                else :
+                else:
                     msg_type = dk
 
                 m = self._dictionary_info.get_message_struct(msg_type)
